@@ -1,53 +1,43 @@
+
 # Mental Health Hospital Management System
 
-A comprehensive web-based hospital management system designed specifically for mental health facilities, featuring AI-powered NLP anomaly detection, secure cloud storage, and modern healthcare workflow management.
+A web-based hospital management system for mental health facilities, featuring AI-powered NLP anomaly detection, secure cloud storage, and modern healthcare workflow management.
 
-## 🏥 Features
+## Project Structure
 
-### Core Functionality
-- **Staff Authentication & Authorization** - Secure login system with role-based access control
-- **Patient Management** - Comprehensive patient directory with status tracking
-- **Electronic Case Notes** - Digital case note creation, storage, and management
-- **AWS S3 Integration** - Secure cloud storage for case note files with metadata
-- **NLP Anomaly Detection** - AI-powered analysis using scikit-learn to detect unusual patterns
-- **Real-time Dashboard** - Live analytics and system status monitoring
-- **Responsive Design** - Modern, mobile-friendly interface with Bootstrap 5
+```
+app.py
+config.py
+deploy.sh
+DEPLOYMENT.md
+env.production.example
+nlp_processor.py
+README.md
+requirements.txt
+run.py
+templates/
+    add_case_note.html
+    anomalies.html
+    base.html
+    case_notes.html
+    client_notes.html
+    client_search.html
+    dashboard.html
+    index.html
+    login.html
+    patients.html
+    register.html
+    view_note.html
+wsgi.py
+```
 
-### Security & Compliance
-- **HIPAA Compliant** - Secure handling of protected health information
-- **Encrypted Storage** - AWS S3 encryption for all stored documents
-- **Secure Authentication** - Password hashing with bcrypt
-- **Session Management** - Secure session handling with timeout protection
-- **Audit Trails** - Comprehensive logging of all system activities
+## About
+- AI-powered anomaly detection for case notes
+- Secure authentication and patient management
+- Cloud storage integration (AWS S3)
+- Modern, responsive web interface
 
-### AI & Analytics
-- **NLP Processing** - Advanced text analysis using TF-IDF vectorization
-- **Anomaly Scoring** - Automated detection of unusual case notes
-- **Pattern Recognition** - Identification of writing style changes and content anomalies
-- **Similarity Analysis** - Comparison with historical patient notes
-- **Automated Flagging** - Real-time alerts for potentially problematic entries
-
-## 🚀 Technology Stack
-
-- **Backend**: Python Flask with SQLAlchemy ORM
-- **Frontend**: Bootstrap 5, JavaScript ES6, Font Awesome icons
-- **Database**: PostgreSQL (production) / SQLite (development)
-- **Cloud Storage**: AWS S3 with boto3 SDK
-- **Machine Learning**: scikit-learn, NumPy, pandas
-- **Authentication**: Flask-Login with Werkzeug security
-- **Deployment**: Gunicorn WSGI server, EC2 compatible
-
-## 📋 Prerequisites
-
-- Python 3.8 or higher
-- AWS Account with S3 access
-- PostgreSQL (for production) or SQLite (for development)
-- EC2 instance (for deployment)
-
-## 🛠️ Installation & Setup
-
-### 1. Clone the Repository
-```bash
+For deployment, all cloud infrastructure is managed externally.
 git clone https://github.com/your-username/mental-health-hospital-system.git
 cd mental-health-hospital-system
 ```
