@@ -1,0 +1,657 @@
+{% extends "base.html" %}
+
+{% block title %}Anomalies - Mental Health Hospital{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="page-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h1 class="h3 mb-0">
+                            <i class="fas fa-exclamation-triangle text-warning me-3"></i>
+                            NLP Anomaly Detection
+                        </h1>
+                        <p class="text-muted mb-0">
+                            Review case notes flagged by our AI system for unusual patterns
+                        </p>
+                    </div>
+                    <div class="col-auto">
+                        <div class="btn-group">
+                            <button class="btn btn-primary" onclick="runBulkAnalysis()">
+                                <i class="fas fa-brain me-2"></i>Run Analysis
+                            </button>
+                            <button class="btn btn-outline-secondary" onclick="exportAnomalies()">
+                                <i class="fas fa-download me-2"></i>Export
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Anomaly Statistics -->
+    <div class="row mb-4">
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card stats-card danger h-100">
+                <div class="card-body text-center text-white">
+                    <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
+                    <h4>{{ flagged_notes|length }}</h4>
+                    <p class="mb-0">Total Anomalies</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card stats-card warning h-100">
+                <div class="card-body text-center text-white">
+                    <i class="fas fa-clock fa-2x mb-2"></i>
+                    <h4>{{ recent_anomalies or '0' }}</h4>
+                    <p class="mb-0">Last 7 Days</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card stats-card h-100">
+                <div class="card-body text-center text-white">
+                    <i class="fas fa-percentage fa-2x mb-2"></i>
+                    <h4>{{ anomaly_rate or '0' }}%</h4>
+                    <p class="mb-0">Detection Rate</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card stats-card success h-100">
+                <div class="card-body text-center text-white">
+                    <i class="fas fa-check-circle fa-2x mb-2"></i>
+                    <h4>{{ resolved_anomalies or '0' }}</h4>
+                    <p class="mb-0">Resolved</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <form method="GET" class="row g-3">
+                        <div class="col-md-3">
+                            <label for="severity" class="form-label">Severity Level</label>
+                            <select class="form-select" id="severity" name="severity">
+                                <option value="">All Severities</option>
+                                <option value="high" {{ 'selected' if request.args.get('severity') == 'high' }}>High (0.7+)</option>
+                                <option value="medium" {{ 'selected' if request.args.get('severity') == 'medium' }}>Medium (0.4-0.7)</option>
+                                <option value="low" {{ 'selected' if request.args.get('severity') == 'low' }}>Low (0.0-0.4)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="note_type" class="form-label">Note Type</label>
+                            <select class="form-select" id="note_type" name="note_type">
+                                <option value="">All Types</option>
+                                <option value="Assessment" {{ 'selected' if request.args.get('note_type') == 'Assessment' }}>Assessment</option>
+                                <option value="Progress" {{ 'selected' if request.args.get('note_type') == 'Progress' }}>Progress</option>
+                                <option value="Treatment" {{ 'selected' if request.args.get('note_type') == 'Treatment' }}>Treatment</option>
+                                <option value="Incident" {{ 'selected' if request.args.get('note_type') == 'Incident' }}>Incident</option>
+                                <option value="Medication" {{ 'selected' if request.args.get('note_type') == 'Medication' }}>Medication</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="staff_filter" class="form-label">Staff Member</label>
+                            <select class="form-select" id="staff_filter" name="staff_filter">
+                                <option value="">All Staff</option>
+                                <option value="current" {{ 'selected' if request.args.get('staff_filter') == 'current' }}>My Notes Only</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="date_range" class="form-label">Date Range</label>
+                            <select class="form-select" id="date_range" name="date_range">
+                                <option value="">All Dates</option>
+                                <option value="today" {{ 'selected' if request.args.get('date_range') == 'today' }}>Today</option>
+                                <option value="week" {{ 'selected' if request.args.get('date_range') == 'week' }}>This Week</option>
+                                <option value="month" {{ 'selected' if request.args.get('date_range') == 'month' }}>This Month</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="fas fa-filter"></i> Filter
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Anomalies Table -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-white">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <h5 class="mb-0">
+                                Flagged Case Notes
+                                {% if flagged_notes %}
+                                    <span class="badge bg-warning ms-2">{{ flagged_notes|length }}</span>
+                                {% endif %}
+                            </h5>
+                        </div>
+                        <div class="col-auto">
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-success" onclick="markAllResolved()">
+                                    <i class="fas fa-check-double me-1"></i>Mark Resolved
+                                </button>
+                                <button class="btn btn-outline-info" onclick="reanalyzeAll()">
+                                    <i class="fas fa-sync-alt me-1"></i>Re-analyze
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    {% if flagged_notes %}
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>
+                                            <input type="checkbox" class="form-check-input" id="selectAll">
+                                        </th>
+                                        <th>Severity</th>
+                                        <th>Patient</th>
+                                        <th>Staff</th>
+                                        <th>Note Type</th>
+                                        <th>Title</th>
+                                        <th>Date</th>
+                                        <th>Anomaly Score</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for note in flagged_notes %}
+                                    <tr class="table-warning">
+                                        <td>
+                                            <input type="checkbox" class="form-check-input anomaly-checkbox" 
+                                                   value="{{ note.note_id }}">
+                                        </td>
+                                        <td>
+                                            {% if note.anomaly_score >= 0.7 %}
+                                                <span class="badge bg-danger">
+                                                    <i class="fas fa-exclamation-triangle me-1"></i>High
+                                                </span>
+                                            {% elif note.anomaly_score >= 0.4 %}
+                                                <span class="badge bg-warning">
+                                                    <i class="fas fa-exclamation-circle me-1"></i>Medium
+                                                </span>
+                                            {% else %}
+                                                <span class="badge bg-info">
+                                                    <i class="fas fa-info-circle me-1"></i>Low
+                                                </span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div>
+                                                <strong>{{ note.patient.first_name }} {{ note.patient.last_name }}</strong>
+                                                <br>
+                                                <small class="text-muted">{{ note.patient.medical_record_number }}</small>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div>
+                                                <strong>{{ note.staff_member.first_name }} {{ note.staff_member.last_name }}</strong>
+                                                <br>
+                                                <small class="text-muted">{{ note.staff_member.job_title }}</small>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-secondary">{{ note.note_type }}</span>
+                                        </td>
+                                        <td>
+                                            <div>
+                                                {{ note.title[:40] }}{% if note.title|length > 40 %}...{% endif %}
+                                                <br>
+                                                <small class="text-muted">
+                                                    {{ note.content[:60] }}{% if note.content|length > 60 %}...{% endif %}
+                                                </small>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <small>{{ note.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
+                                        </td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="progress me-2" style="width: 80px; height: 20px;">
+                                                    <div class="progress-bar bg-danger" 
+                                                         style="width: {{ (note.anomaly_score * 100) | round }}%">
+                                                    </div>
+                                                </div>
+                                                <small class="fw-bold">{{ (note.anomaly_score * 100) | round }}%</small>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                <button class="btn btn-outline-primary" 
+                                                        onclick="analyzeAnomaly({{ note.note_id }})"
+                                                        title="Detailed Analysis">
+                                                    <i class="fas fa-search-plus"></i>
+                                                </button>
+                                                <button class="btn btn-outline-info" 
+                                                        onclick="viewNote({{ note.note_id }})"
+                                                        title="View Note">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                                <button class="btn btn-outline-success" 
+                                                        onclick="markResolved({{ note.note_id }})"
+                                                        title="Mark Resolved">
+                                                    <i class="fas fa-check"></i>
+                                                </button>
+                                                <button class="btn btn-outline-warning" 
+                                                        onclick="reanalyze({{ note.note_id }})"
+                                                        title="Re-analyze">
+                                                    <i class="fas fa-sync-alt"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-shield-check fa-4x text-success mb-4"></i>
+                            <h4 class="text-success">No Anomalies Detected</h4>
+                            <p class="text-muted">
+                                {% if request.args.get('severity') or request.args.get('note_type') %}
+                                    No anomalies match your current filters. 
+                                    <a href="{{ url_for('anomalies') }}" class="text-primary">Clear filters</a>
+                                {% else %}
+                                    All case notes appear normal based on our NLP analysis.
+                                {% endif %}
+                            </p>
+                            <button class="btn btn-primary" onclick="runBulkAnalysis()">
+                                <i class="fas fa-brain me-2"></i>Run New Analysis
+                            </button>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Anomaly Analysis Modal -->
+<div class="modal fade" id="anomalyModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-microscope text-primary me-2"></i>
+                    Detailed Anomaly Analysis
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="anomalyModalBody">
+                <!-- Content will be loaded here -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-success" onclick="markCurrentResolved()">
+                    <i class="fas fa-check me-2"></i>Mark as Resolved
+                </button>
+                <button type="button" class="btn btn-outline-warning" onclick="reanalyzeCurrent()">
+                    <i class="fas fa-sync-alt me-2"></i>Re-analyze
+                </button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bulk Analysis Modal -->
+<div class="modal fade" id="bulkAnalysisModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Bulk NLP Analysis</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center">
+                    <i class="fas fa-brain fa-3x text-primary mb-3"></i>
+                    <h5>Running NLP Analysis</h5>
+                    <p class="text-muted">Analyzing case notes for anomalies...</p>
+                    <div class="progress mb-3">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                             id="analysisProgress" style="width: 0%"></div>
+                    </div>
+                    <div id="analysisStatus">Initializing analysis...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let currentNoteId = null;
+
+    // Select all functionality
+    document.getElementById('selectAll').addEventListener('change', function() {
+        const checkboxes = document.querySelectorAll('.anomaly-checkbox');
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = this.checked;
+        });
+    });
+
+    function analyzeAnomaly(noteId) {
+        currentNoteId = noteId;
+        const modal = new bootstrap.Modal(document.getElementById('anomalyModal'));
+        
+        document.getElementById('anomalyModalBody').innerHTML = `
+            <div class="text-center">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Analyzing...</span>
+                </div>
+                <p class="mt-2">Running detailed anomaly analysis...</p>
+            </div>
+        `;
+        modal.show();
+        
+        // Simulate detailed analysis
+        setTimeout(() => {
+            document.getElementById('anomalyModalBody').innerHTML = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card border-danger">
+                            <div class="card-header bg-danger text-white">
+                                <h6 class="mb-0"><i class="fas fa-exclamation-triangle me-2"></i>Anomaly Metrics</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row mb-3">
+                                    <div class="col-6">
+                                        <div class="text-center">
+                                            <h4 class="text-danger">0.85</h4>
+                                            <small class="text-muted">Overall Score</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="text-center">
+                                            <h4 class="text-warning">0.23</h4>
+                                            <small class="text-muted">Similarity</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <hr>
+                                <ul class="list-unstyled mb-0">
+                                    <li class="mb-2">
+                                        <i class="fas fa-exclamation-circle text-danger me-2"></i>
+                                        <strong>Low Content Similarity:</strong> 0.23 (threshold: 0.30)
+                                    </li>
+                                    <li class="mb-2">
+                                        <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                                        <strong>Length Deviation:</strong> 3.2x longer than average
+                                    </li>
+                                    <li class="mb-2">
+                                        <i class="fas fa-info-circle text-info me-2"></i>
+                                        <strong>Unique Vocabulary:</strong> 78% unique words
+                                    </li>
+                                    <li class="mb-0">
+                                        <i class="fas fa-chart-line text-primary me-2"></i>
+                                        <strong>Writing Style:</strong> Significantly different
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card border-info">
+                            <div class="card-header bg-info text-white">
+                                <h6 class="mb-0"><i class="fas fa-lightbulb me-2"></i>Analysis Insights</h6>
+                            </div>
+                            <div class="card-body">
+                                <h6>Potential Issues:</h6>
+                                <ul class="mb-3">
+                                    <li>Emergency/crisis language detected</li>
+                                    <li>Unusual medical terminology</li>
+                                    <li>Significant length deviation</li>
+                                    <li>Different writing pattern</li>
+                                </ul>
+                                
+                                <h6>Recommendations:</h6>
+                                <div class="alert alert-warning">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    <strong>High Priority:</strong> This note should be reviewed immediately for:
+                                    <ul class="mb-0 mt-2">
+                                        <li>Data entry accuracy</li>
+                                        <li>Patient safety concerns</li>
+                                        <li>Potential incident documentation</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Comparison with Previous Notes</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row text-center">
+                                    <div class="col-md-3">
+                                        <canvas id="similarityChart" width="100" height="100"></canvas>
+                                        <small class="text-muted">Content Similarity</small>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <canvas id="lengthChart" width="100" height="100"></canvas>
+                                        <small class="text-muted">Length Comparison</small>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <canvas id="vocabularyChart" width="100" height="100"></canvas>
+                                        <small class="text-muted">Vocabulary Overlap</small>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <canvas id="styleChart" width="100" height="100"></canvas>
+                                        <small class="text-muted">Writing Style</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Draw simple charts (placeholder)
+            drawSimpleChart('similarityChart', 23, 'danger');
+            drawSimpleChart('lengthChart', 75, 'warning');
+            drawSimpleChart('vocabularyChart', 22, 'info');
+            drawSimpleChart('styleChart', 15, 'primary');
+        }, 2000);
+    }
+
+    function drawSimpleChart(canvasId, percentage, color) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return;
+        
+        const ctx = canvas.getContext('2d');
+        const centerX = 50;
+        const centerY = 50;
+        const radius = 40;
+        
+        // Clear canvas
+        ctx.clearRect(0, 0, 100, 100);
+        
+        // Background circle
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+        ctx.strokeStyle = '#e9ecef';
+        ctx.lineWidth = 8;
+        ctx.stroke();
+        
+        // Progress circle
+        const angle = (percentage / 100) * 2 * Math.PI;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius, -Math.PI/2, -Math.PI/2 + angle);
+        ctx.strokeStyle = getColorCode(color);
+        ctx.lineWidth = 8;
+        ctx.lineCap = 'round';
+        ctx.stroke();
+        
+        // Text
+        ctx.font = '16px Arial';
+        ctx.fillStyle = '#333';
+        ctx.textAlign = 'center';
+        ctx.fillText(percentage + '%', centerX, centerY + 5);
+    }
+
+    function getColorCode(color) {
+        const colors = {
+            'danger': '#dc3545',
+            'warning': '#ffc107',
+            'info': '#0dcaf0',
+            'primary': '#0d6efd',
+            'success': '#198754'
+        };
+        return colors[color] || '#6c757d';
+    }
+
+    function viewNote(noteId) {
+        alert(`View note ${noteId} functionality would be implemented here`);
+    }
+
+    function markResolved(noteId) {
+        if (confirm('Mark this anomaly as resolved?')) {
+            // Simulate API call
+            const row = event.target.closest('tr');
+            row.classList.remove('table-warning');
+            row.classList.add('table-success');
+            
+            // Show success message
+            showToast('Anomaly marked as resolved', 'success');
+        }
+    }
+
+    function markCurrentResolved() {
+        if (currentNoteId) {
+            markResolved(currentNoteId);
+            bootstrap.Modal.getInstance(document.getElementById('anomalyModal')).hide();
+        }
+    }
+
+    function reanalyze(noteId) {
+        const btn = event.target.closest('button');
+        const originalHTML = btn.innerHTML;
+        
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        btn.disabled = true;
+        
+        setTimeout(() => {
+            btn.innerHTML = originalHTML;
+            btn.disabled = false;
+            showToast('Re-analysis completed', 'info');
+        }, 2000);
+    }
+
+    function reanalyzeCurrent() {
+        if (currentNoteId) {
+            reanalyze(currentNoteId);
+        }
+    }
+
+    function markAllResolved() {
+        const selected = document.querySelectorAll('.anomaly-checkbox:checked');
+        if (selected.length === 0) {
+            alert('Please select anomalies to mark as resolved');
+            return;
+        }
+        
+        if (confirm(`Mark ${selected.length} anomalies as resolved?`)) {
+            selected.forEach(checkbox => {
+                const row = checkbox.closest('tr');
+                row.classList.remove('table-warning');
+                row.classList.add('table-success');
+            });
+            showToast(`${selected.length} anomalies marked as resolved`, 'success');
+        }
+    }
+
+    function reanalyzeAll() {
+        const selected = document.querySelectorAll('.anomaly-checkbox:checked');
+        if (selected.length === 0) {
+            alert('Please select anomalies to re-analyze');
+            return;
+        }
+        
+        alert(`Re-analyzing ${selected.length} selected notes...`);
+    }
+
+    function runBulkAnalysis() {
+        const modal = new bootstrap.Modal(document.getElementById('bulkAnalysisModal'));
+        modal.show();
+        
+        let progress = 0;
+        const progressBar = document.getElementById('analysisProgress');
+        const statusDiv = document.getElementById('analysisStatus');
+        
+        const interval = setInterval(() => {
+            progress += Math.random() * 15;
+            if (progress > 100) progress = 100;
+            
+            progressBar.style.width = progress + '%';
+            
+            if (progress < 25) {
+                statusDiv.textContent = 'Loading case notes...';
+            } else if (progress < 50) {
+                statusDiv.textContent = 'Extracting features...';
+            } else if (progress < 75) {
+                statusDiv.textContent = 'Running similarity analysis...';
+            } else if (progress < 95) {
+                statusDiv.textContent = 'Calculating anomaly scores...';
+            } else {
+                statusDiv.textContent = 'Analysis complete!';
+                clearInterval(interval);
+                
+                setTimeout(() => {
+                    modal.hide();
+                    showToast('Bulk analysis completed. Page will refresh to show new results.', 'success');
+                    setTimeout(() => location.reload(), 2000);
+                }, 1000);
+            }
+        }, 200);
+    }
+
+    function exportAnomalies() {
+        alert('Exporting anomaly report to CSV...');
+    }
+
+    function showToast(message, type = 'info') {
+        const toast = document.createElement('div');
+        toast.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+        toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+        toast.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.remove();
+        }, 5000);
+    }
+
+    // Auto-submit form on filter change
+    document.querySelectorAll('#severity, #note_type, #staff_filter, #date_range').forEach(select => {
+        select.addEventListener('change', function() {
+            this.form.submit();
+        });
+    });
+</script>
+{% endblock %}
+

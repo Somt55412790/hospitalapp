@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+
+{% block title %}Welcome - Mental Health Hospital{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Hero Section -->
+    <div class="row min-vh-100 align-items-center">
+        <div class="col-lg-6">
+            <div class="hero-content">
+                <h1 class="display-4 fw-bold mb-4">
+                    <i class="fas fa-heart text-danger me-3"></i>
+                    Mental Health Hospital
+                    <br>
+                    <span class="text-primary">Management System</span>
+                </h1>
+                <p class="lead mb-4">
+                    Advanced healthcare management platform with integrated NLP analytics, 
+                    secure cloud storage, and comprehensive patient care tracking.
+                </p>
+                <div class="d-flex flex-wrap gap-3">
+                    {% if current_user.is_authenticated %}
+                        <a href="{{ url_for('dashboard') }}" class="btn btn-primary btn-lg">
+                            <i class="fas fa-tachometer-alt me-2"></i>Go to Dashboard
+                        </a>
+                    {% else %}
+                        <a href="{{ url_for('login') }}" class="btn btn-primary btn-lg">
+                            <i class="fas fa-sign-in-alt me-2"></i>Staff Login
+                        </a>
+                        <a href="{{ url_for('register') }}" class="btn btn-outline-primary btn-lg">
+                            <i class="fas fa-user-plus me-2"></i>Register
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="hero-image text-center">
+                <div class="card border-0 shadow-lg">
+                    <div class="card-body p-5">
+                        <div class="row text-center">
+                            <div class="col-4">
+                                <div class="feature-icon mb-3">
+                                    <i class="fas fa-shield-alt fa-3x text-primary"></i>
+                                </div>
+                                <h5>Secure</h5>
+                                <p class="text-muted">HIPAA compliant with AWS encryption</p>
+                            </div>
+                            <div class="col-4">
+                                <div class="feature-icon mb-3">
+                                    <i class="fas fa-brain fa-3x text-success"></i>
+                                </div>
+                                <h5>AI-Powered</h5>
+                                <p class="text-muted">NLP anomaly detection</p>
+                            </div>
+                            <div class="col-4">
+                                <div class="feature-icon mb-3">
+                                    <i class="fas fa-cloud fa-3x text-info"></i>
+                                </div>
+                                <h5>Cloud-Based</h5>
+                                <p class="text-muted">AWS S3 & EC2 infrastructure</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Features Section -->
+    <div class="row py-5">
+        <div class="col-12">
+            <h2 class="text-center mb-5">Platform Features</h2>
+        </div>
+        <div class="col-lg-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <div class="feature-icon mb-3">
+                        <i class="fas fa-file-medical-alt fa-3x text-primary"></i>
+                    </div>
+                    <h5 class="card-title">Digital Case Notes</h5>
+                    <p class="card-text">
+                        Comprehensive electronic case note management with staff tracking,
+                        patient linkage, and secure cloud storage integration.
+                    </p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <div class="feature-icon mb-3">
+                        <i class="fas fa-exclamation-triangle fa-3x text-warning"></i>
+                    </div>
+                    <h5 class="card-title">Anomaly Detection</h5>
+                    <p class="card-text">
+                        Advanced NLP algorithms analyze case notes to detect unusual patterns
+                        and potential issues requiring immediate attention.
+                    </p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <div class="feature-icon mb-3">
+                        <i class="fas fa-users fa-3x text-success"></i>
+                    </div>
+                    <h5 class="card-title">Staff Management</h5>
+                    <p class="card-text">
+                        Role-based access control for hospital staff with job title tracking
+                        and comprehensive audit trails for all activities.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Section -->
+    {% if current_user.is_authenticated %}
+    <div class="row py-5">
+        <div class="col-12">
+            <h2 class="text-center mb-5">System Overview</h2>
+        </div>
+        <div class="col-lg-3 mb-4">
+            <div class="card stats-card success h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-users fa-3x mb-3"></i>
+                    <h3>{{ staff_count or 'N/A' }}</h3>
+                    <p>Active Staff Members</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 mb-4">
+            <div class="card stats-card h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-user-injured fa-3x mb-3"></i>
+                    <h3>{{ patient_count or 'N/A' }}</h3>
+                    <p>Registered Patients</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 mb-4">
+            <div class="card stats-card warning h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-file-medical fa-3x mb-3"></i>
+                    <h3>{{ notes_count or 'N/A' }}</h3>
+                    <p>Case Notes</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 mb-4">
+            <div class="card stats-card danger h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-exclamation-triangle fa-3x mb-3"></i>
+                    <h3>{{ anomalies_count or 'N/A' }}</h3>
+                    <p>Flagged Anomalies</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Technology Stack -->
+    <div class="row py-5 bg-light rounded">
+        <div class="col-12">
+            <h2 class="text-center mb-5">Technology Stack</h2>
+        </div>
+        <div class="col-lg-2 col-md-4 col-6 mb-4 text-center">
+            <div class="tech-item">
+                <i class="fab fa-aws fa-3x text-warning mb-2"></i>
+                <h6>AWS Cloud</h6>
+            </div>
+        </div>
+        <div class="col-lg-2 col-md-4 col-6 mb-4 text-center">
+            <div class="tech-item">
+                <i class="fab fa-python fa-3x text-primary mb-2"></i>
+                <h6>Python Flask</h6>
+            </div>
+        </div>
+        <div class="col-lg-2 col-md-4 col-6 mb-4 text-center">
+            <div class="tech-item">
+                <i class="fas fa-database fa-3x text-success mb-2"></i>
+                <h6>PostgreSQL</h6>
+            </div>
+        </div>
+        <div class="col-lg-2 col-md-4 col-6 mb-4 text-center">
+            <div class="tech-item">
+                <i class="fas fa-brain fa-3x text-info mb-2"></i>
+                <h6>Scikit-Learn</h6>
+            </div>
+        </div>
+        <div class="col-lg-2 col-md-4 col-6 mb-4 text-center">
+            <div class="tech-item">
+                <i class="fab fa-bootstrap fa-3x text-purple mb-2"></i>
+                <h6>Bootstrap 5</h6>
+            </div>
+        </div>
+        <div class="col-lg-2 col-md-4 col-6 mb-4 text-center">
+            <div class="tech-item">
+                <i class="fas fa-lock fa-3x text-danger mb-2"></i>
+                <h6>HIPAA Compliant</h6>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+
+{% block title %}Register - Mental Health Hospital{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center py-5">
+        <div class="col-lg-6 col-md-8">
+            <div class="card shadow-lg border-0">
+                <div class="card-body p-5">
+                    <div class="text-center mb-4">
+                        <i class="fas fa-user-plus fa-3x text-primary mb-3"></i>
+                        <h2 class="fw-bold">Staff Registration</h2>
+                        <p class="text-muted">Create your account to access the system</p>
+                    </div>
+
+                    <form method="POST" id="registerForm">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="first_name" class="form-label">
+                                    <i class="fas fa-user me-2"></i>First Name
+                                </label>
+                                <input type="text" class="form-control" id="first_name" 
+                                       name="first_name" required placeholder="First Name">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="last_name" class="form-label">
+                                    <i class="fas fa-user me-2"></i>Last Name
+                                </label>
+                                <input type="text" class="form-control" id="last_name" 
+                                       name="last_name" required placeholder="Last Name">
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="username" class="form-label">
+                                <i class="fas fa-at me-2"></i>Username
+                            </label>
+                            <input type="text" class="form-control" id="username" 
+                                   name="username" required placeholder="Choose a username">
+                            <div class="form-text">Must be unique and at least 3 characters long</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="email" class="form-label">
+                                <i class="fas fa-envelope me-2"></i>Email Address
+                            </label>
+                            <input type="email" class="form-control" id="email" 
+                                   name="email" required placeholder="your.email@hospital.com">
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-8 mb-3">
+                                <label for="job_title" class="form-label">
+                                    <i class="fas fa-briefcase me-2"></i>Job Title
+                                </label>
+                                <select class="form-select" id="job_title" name="job_title" required>
+                                    <option value="">Select your job title</option>
+                                    <option value="Psychiatrist">Psychiatrist</option>
+                                    <option value="Clinical Psychologist">Clinical Psychologist</option>
+                                    <option value="Registered Nurse">Registered Nurse</option>
+                                    <option value="Licensed Practical Nurse">Licensed Practical Nurse</option>
+                                    <option value="Psychiatric Nurse">Psychiatric Nurse</option>
+                                    <option value="Clinical Therapist">Clinical Therapist</option>
+                                    <option value="Mental Health Counselor">Mental Health Counselor</option>
+                                    <option value="Social Worker">Social Worker</option>
+                                    <option value="Case Manager">Case Manager</option>
+                                    <option value="Occupational Therapist">Occupational Therapist</option>
+                                    <option value="Art Therapist">Art Therapist</option>
+                                    <option value="Clinical Pharmacist">Clinical Pharmacist</option>
+                                    <option value="Mental Health Technician">Mental Health Technician</option>
+                                    <option value="Psychiatric Resident">Psychiatric Resident</option>
+                                    <option value="Nursing Supervisor">Nursing Supervisor</option>
+                                    <option value="Administrative Coordinator">Administrative Coordinator</option>
+                                    <option value="Clinical Director">Clinical Director</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="department" class="form-label">
+                                    <i class="fas fa-building me-2"></i>Department
+                                </label>
+                                <select class="form-select" id="department" name="department">
+                                    <option value="">Select department</option>
+                                    <option value="Psychiatry">Psychiatry</option>
+                                    <option value="Psychology">Psychology</option>
+                                    <option value="Inpatient Care">Inpatient Care</option>
+                                    <option value="Outpatient Care">Outpatient Care</option>
+                                    <option value="Acute Care">Acute Care</option>
+                                    <option value="Emergency Services">Emergency Services</option>
+                                    <option value="Therapy Services">Therapy Services</option>
+                                    <option value="Counseling Services">Counseling Services</option>
+                                    <option value="Social Services">Social Services</option>
+                                    <option value="Case Management">Case Management</option>
+                                    <option value="Rehabilitation Services">Rehabilitation Services</option>
+                                    <option value="Creative Therapies">Creative Therapies</option>
+                                    <option value="Pharmacy">Pharmacy</option>
+                                    <option value="Patient Care">Patient Care</option>
+                                    <option value="Nursing Administration">Nursing Administration</option>
+                                    <option value="Administration">Administration</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="password" class="form-label">
+                                <i class="fas fa-lock me-2"></i>Password
+                            </label>
+                            <div class="input-group">
+                                <input type="password" class="form-control" id="password" 
+                                       name="password" required placeholder="Create a strong password">
+                                <button class="btn btn-outline-secondary" type="button" 
+                                        id="togglePassword">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                            <div class="form-text">
+                                Password should be at least 8 characters long and include numbers and special characters
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="terms" required>
+                                <label class="form-check-label" for="terms">
+                                    I agree to the <a href="#" class="text-primary">Terms of Service</a> 
+                                    and <a href="#" class="text-primary">Privacy Policy</a>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="d-grid mb-3">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-user-plus me-2"></i>Create Account
+                            </button>
+                        </div>
+
+                        <div class="text-center">
+                            <p class="mb-0">
+                                Already have an account? 
+                                <a href="{{ url_for('login') }}" class="text-primary text-decoration-none">
+                                    Login here
+                                </a>
+                            </p>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Toggle password visibility
+    document.getElementById('togglePassword').addEventListener('click', function() {
+        const passwordField = document.getElementById('password');
+        const toggleIcon = this.querySelector('i');
+        
+        if (passwordField.type === 'password') {
+            passwordField.type = 'text';
+            toggleIcon.classList.remove('fa-eye');
+            toggleIcon.classList.add('fa-eye-slash');
+        } else {
+            passwordField.type = 'password';
+            toggleIcon.classList.remove('fa-eye-slash');
+            toggleIcon.classList.add('fa-eye');
+        }
+    });
+
+    // Form validation
+    document.getElementById('registerForm').addEventListener('submit', function(e) {
+        const password = document.getElementById('password').value;
+        
+        if (password.length < 8) {
+            e.preventDefault();
+            alert('Password must be at least 8 characters long');
+            return false;
+        }
+        
+        if (!/\d/.test(password)) {
+            e.preventDefault();
+            alert('Password must contain at least one number');
+            return false;
+        }
+    });
+
+    // Auto-populate department based on job title
+    document.getElementById('job_title').addEventListener('change', function() {
+        const jobTitle = this.value;
+        const departmentSelect = document.getElementById('department');
+        
+        const jobToDepartment = {
+            'Psychiatrist': 'Psychiatry',
+            'Psychiatric Resident': 'Psychiatry',
+            'Clinical Psychologist': 'Psychology',
+            'Registered Nurse': 'Inpatient Care',
+            'Licensed Practical Nurse': 'Outpatient Care',
+            'Psychiatric Nurse': 'Acute Care',
+            'Clinical Therapist': 'Therapy Services',
+            'Mental Health Counselor': 'Counseling Services',
+            'Social Worker': 'Social Services',
+            'Case Manager': 'Case Management',
+            'Occupational Therapist': 'Rehabilitation Services',
+            'Art Therapist': 'Creative Therapies',
+            'Clinical Pharmacist': 'Pharmacy',
+            'Mental Health Technician': 'Patient Care',
+            'Nursing Supervisor': 'Nursing Administration',
+            'Administrative Coordinator': 'Administration',
+            'Clinical Director': 'Administration'
+        };
+        
+        if (jobToDepartment[jobTitle]) {
+            departmentSelect.value = jobToDepartment[jobTitle];
+        }
+    });
+</script>
+{% endblock %}
+

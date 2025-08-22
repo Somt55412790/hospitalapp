@@ -1,0 +1,470 @@
+{% extends "base.html" %}
+
+{% block title %}Client Search - Mental Health Hospital{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="page-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h1 class="h3 mb-0">
+                            <i class="fas fa-search text-primary me-3"></i>
+                            Search Client Notes
+                        </h1>
+                        <p class="text-muted mb-0">
+                            Find clients by name, MRN, or ID and view their case notes
+                        </p>
+                    </div>
+                    <div class="col-auto">
+                        <a href="{{ url_for('patients') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-list me-2"></i>All Clients
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search Form -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <form method="GET" class="row g-3" id="searchForm">
+                        <div class="col-md-8">
+                            <label for="search" class="form-label">
+                                <i class="fas fa-search me-2"></i>Search Clients
+                            </label>
+                            <div class="input-group input-group-lg">
+                                <input type="text" class="form-control" id="search" name="search" 
+                                       placeholder="Enter client name, MRN, or patient ID..." 
+                                       value="{{ search_query }}" autocomplete="off">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-search me-2"></i>Search
+                                </button>
+                            </div>
+                            <div class="form-text">
+                                Search by: First name, Last name, Full name, or Medical Record Number (MRN)
+                            </div>
+                            <!-- Autocomplete dropdown -->
+                            <div id="searchSuggestions" class="list-group position-absolute w-100" style="z-index: 1000; display: none;"></div>
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end">
+                            {% if search_query %}
+                                <a href="{{ url_for('client_search') }}" class="btn btn-outline-secondary me-2">
+                                    <i class="fas fa-times me-2"></i>Clear
+                                </a>
+                            {% endif %}
+                            <button type="button" class="btn btn-outline-info" onclick="showAdvancedSearch()">
+                                <i class="fas fa-filter me-2"></i>Advanced
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search Results -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-white">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <h5 class="mb-0">
+                                {% if search_query %}
+                                    Search Results for "{{ search_query }}"
+                                {% else %}
+                                    All Clients
+                                {% endif %}
+                                {% if patients.total %}
+                                    <span class="badge bg-primary ms-2">{{ patients.total }}</span>
+                                {% endif %}
+                            </h5>
+                        </div>
+                        <div class="col-auto">
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-secondary" onclick="exportResults()">
+                                    <i class="fas fa-download me-1"></i>Export
+                                </button>
+                                <button class="btn btn-outline-secondary" onclick="printResults()">
+                                    <i class="fas fa-print me-1"></i>Print
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    {% if patients.items %}
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Client Information</th>
+                                        <th>MRN</th>
+                                        <th>Status</th>
+                                        <th>Case Notes</th>
+                                        <th>Last Activity</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for patient in patients.items %}
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="avatar-circle me-3">
+                                                    <i class="fas fa-user"></i>
+                                                </div>
+                                                <div>
+                                                    <strong class="text-primary">
+                                                        {{ patient.first_name }} {{ patient.last_name }}
+                                                    </strong>
+                                                    <br>
+                                                    <small class="text-muted">
+                                                        <i class="fas fa-calendar me-1"></i>
+                                                        DOB: {{ patient.date_of_birth.strftime('%Y-%m-%d') }}
+                                                        ({{ (date.today() - patient.date_of_birth).days // 365 }} years old)
+                                                    </small>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <code class="bg-light p-1">{{ patient.medical_record_number }}</code>
+                                        </td>
+                                        <td>
+                                            {% if patient.status == 'Active' %}
+                                                <span class="badge bg-success">
+                                                    <i class="fas fa-check-circle me-1"></i>{{ patient.status }}
+                                                </span>
+                                            {% elif patient.status == 'Discharged' %}
+                                                <span class="badge bg-secondary">
+                                                    <i class="fas fa-sign-out-alt me-1"></i>{{ patient.status }}
+                                                </span>
+                                            {% else %}
+                                                <span class="badge bg-warning">
+                                                    <i class="fas fa-pause me-1"></i>{{ patient.status }}
+                                                </span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <span class="badge bg-info me-2">
+                                                    <i class="fas fa-file-medical me-1"></i>
+                                                    {{ patient.case_notes|length }}
+                                                </span>
+                                                {% if patient.case_notes %}
+                                                    {% set flagged_notes = patient.case_notes|selectattr('is_flagged', 'equalto', true)|list %}
+                                                    {% if flagged_notes %}
+                                                        <span class="badge bg-warning">
+                                                            <i class="fas fa-exclamation-triangle me-1"></i>
+                                                            {{ flagged_notes|length }}
+                                                        </span>
+                                                    {% endif %}
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                        <td>
+                                            {% if patient.case_notes %}
+                                                {% set latest_note = patient.case_notes|sort(attribute='created_at', reverse=true)|first %}
+                                                <small>
+                                                    <i class="fas fa-clock me-1"></i>
+                                                    {{ latest_note.created_at.strftime('%Y-%m-%d') }}
+                                                </small>
+                                                <br>
+                                                <small class="text-muted">
+                                                    by {{ latest_note.staff_member.first_name }} {{ latest_note.staff_member.last_name }}
+                                                </small>
+                                            {% else %}
+                                                <span class="text-muted">
+                                                    <i class="fas fa-minus me-1"></i>No notes
+                                                </span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                <a href="{{ url_for('client_notes', patient_id=patient.patient_id) }}" 
+                                                   class="btn btn-primary" title="View All Notes">
+                                                    <i class="fas fa-file-medical"></i>
+                                                    <span class="d-none d-md-inline ms-1">View Notes</span>
+                                                </a>
+                                                <button class="btn btn-outline-success" 
+                                                        onclick="addNote({{ patient.patient_id }})"
+                                                        title="Add New Note">
+                                                    <i class="fas fa-plus"></i>
+                                                </button>
+                                                <button class="btn btn-outline-info" 
+                                                        onclick="viewPatient({{ patient.patient_id }})"
+                                                        title="Patient Details">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Pagination -->
+                        {% if patients.pages > 1 %}
+                        <div class="card-footer bg-white">
+                            <nav aria-label="Page navigation">
+                                <ul class="pagination justify-content-center mb-0">
+                                    {% if patients.has_prev %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="{{ url_for('client_search', search=search_query, page=patients.prev_num) }}">
+                                                Previous
+                                            </a>
+                                        </li>
+                                    {% endif %}
+                                    
+                                    {% for page_num in patients.iter_pages() %}
+                                        {% if page_num %}
+                                            {% if page_num != patients.page %}
+                                                <li class="page-item">
+                                                    <a class="page-link" href="{{ url_for('client_search', search=search_query, page=page_num) }}">
+                                                        {{ page_num }}
+                                                    </a>
+                                                </li>
+                                            {% else %}
+                                                <li class="page-item active">
+                                                    <span class="page-link">{{ page_num }}</span>
+                                                </li>
+                                            {% endif %}
+                                        {% else %}
+                                            <li class="page-item disabled">
+                                                <span class="page-link">...</span>
+                                            </li>
+                                        {% endif %}
+                                    {% endfor %}
+                                    
+                                    {% if patients.has_next %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="{{ url_for('client_search', search=search_query, page=patients.next_num) }}">
+                                                Next
+                                            </a>
+                                        </li>
+                                    {% endif %}
+                                </ul>
+                            </nav>
+                        </div>
+                        {% endif %}
+                    {% else %}
+                        <div class="text-center py-5">
+                            {% if search_query %}
+                                <i class="fas fa-search fa-4x text-muted mb-4"></i>
+                                <h4 class="text-muted">No clients found</h4>
+                                <p class="text-muted">
+                                    No clients match your search for "{{ search_query }}".
+                                    <br>Try a different search term or 
+                                    <a href="{{ url_for('client_search') }}" class="text-primary">view all clients</a>.
+                                </p>
+                            {% else %}
+                                <i class="fas fa-users fa-4x text-muted mb-4"></i>
+                                <h4 class="text-muted">No clients found</h4>
+                                <p class="text-muted">No clients are currently registered in the system.</p>
+                            {% endif %}
+                            <button class="btn btn-outline-primary" onclick="showAdvancedSearch()">
+                                <i class="fas fa-filter me-2"></i>Try Advanced Search
+                            </button>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Access Modal -->
+<div class="modal fade" id="quickAccessModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Quick Access</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="d-grid gap-2">
+                    <button class="btn btn-primary btn-lg" onclick="quickSearch('recent')">
+                        <i class="fas fa-clock me-2"></i>Recently Active Clients
+                    </button>
+                    <button class="btn btn-success btn-lg" onclick="quickSearch('active')">
+                        <i class="fas fa-user-check me-2"></i>Active Clients Only
+                    </button>
+                    <button class="btn btn-warning btn-lg" onclick="quickSearch('flagged')">
+                        <i class="fas fa-exclamation-triangle me-2"></i>Clients with Flagged Notes
+                    </button>
+                    <button class="btn btn-info btn-lg" onclick="quickSearch('new')">
+                        <i class="fas fa-user-plus me-2"></i>New Admissions
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let searchTimeout;
+    
+    // Autocomplete functionality
+    document.getElementById('search').addEventListener('input', function() {
+        const query = this.value;
+        
+        clearTimeout(searchTimeout);
+        
+        if (query.length < 2) {
+            hideSuggestions();
+            return;
+        }
+        
+        searchTimeout = setTimeout(() => {
+            fetchSuggestions(query);
+        }, 300);
+    });
+    
+    function fetchSuggestions(query) {
+        fetch(`/api/search_patients?q=${encodeURIComponent(query)}`)
+            .then(response => response.json())
+            .then(data => {
+                showSuggestions(data);
+            })
+            .catch(error => {
+                console.error('Error fetching suggestions:', error);
+            });
+    }
+    
+    function showSuggestions(patients) {
+        const suggestionsDiv = document.getElementById('searchSuggestions');
+        
+        if (patients.length === 0) {
+            hideSuggestions();
+            return;
+        }
+        
+        let html = '';
+        patients.forEach(patient => {
+            html += `
+                <button type="button" class="list-group-item list-group-item-action" 
+                        onclick="selectPatient('${patient.name}', ${patient.id})">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>${patient.name}</strong>
+                            <br>
+                            <small class="text-muted">MRN: ${patient.mrn}</small>
+                        </div>
+                        <span class="badge bg-${patient.status === 'Active' ? 'success' : 'secondary'}">
+                            ${patient.status}
+                        </span>
+                    </div>
+                </button>
+            `;
+        });
+        
+        suggestionsDiv.innerHTML = html;
+        suggestionsDiv.style.display = 'block';
+    }
+    
+    function hideSuggestions() {
+        document.getElementById('searchSuggestions').style.display = 'none';
+    }
+    
+    function selectPatient(name, patientId) {
+        document.getElementById('search').value = name;
+        hideSuggestions();
+        
+        // Redirect directly to patient notes
+        window.location.href = `/client_notes/${patientId}`;
+    }
+    
+    // Hide suggestions when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('#search') && !e.target.closest('#searchSuggestions')) {
+            hideSuggestions();
+        }
+    });
+    
+    function addNote(patientId) {
+        window.location.href = `/add_case_note?patient_id=${patientId}`;
+    }
+    
+    function viewPatient(patientId) {
+        // This would open a patient details modal or redirect to patient page
+        alert(`View patient details for ID: ${patientId}`);
+    }
+    
+    function exportResults() {
+        const searchQuery = document.getElementById('search').value;
+        alert(`Exporting search results for: "${searchQuery}"`);
+    }
+    
+    function printResults() {
+        window.print();
+    }
+    
+    function showAdvancedSearch() {
+        const modal = new bootstrap.Modal(document.getElementById('quickAccessModal'));
+        modal.show();
+    }
+    
+    function quickSearch(type) {
+        let searchUrl = '{{ url_for("client_search") }}';
+        
+        switch(type) {
+            case 'recent':
+                // This would be implemented with additional filtering
+                alert('Showing recently active clients...');
+                break;
+            case 'active':
+                // Filter for active clients
+                alert('Showing active clients only...');
+                break;
+            case 'flagged':
+                // Filter for clients with flagged notes
+                alert('Showing clients with flagged notes...');
+                break;
+            case 'new':
+                // Filter for new admissions
+                alert('Showing new admissions...');
+                break;
+        }
+        
+        bootstrap.Modal.getInstance(document.getElementById('quickAccessModal')).hide();
+    }
+    
+    // Focus search input on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('search').focus();
+    });
+    
+    // Add avatar styling
+    const style = document.createElement('style');
+    style.textContent = `
+        .avatar-circle {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 16px;
+        }
+        
+        #searchSuggestions {
+            max-height: 300px;
+            overflow-y: auto;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            border-radius: 8px;
+        }
+    `;
+    document.head.appendChild(style);
+</script>
+{% endblock %}
+

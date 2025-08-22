@@ -1,0 +1,499 @@
+{% extends "base.html" %}
+
+{% block title %}Case Note - {{ note.title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- Breadcrumb Navigation -->
+            <nav aria-label="breadcrumb" class="mb-3">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item">
+                        <a href="{{ url_for('client_search') }}" class="text-decoration-none">
+                            <i class="fas fa-search me-1"></i>Client Search
+                        </a>
+                    </li>
+                    <li class="breadcrumb-item">
+                        <a href="{{ url_for('client_notes', patient_id=note.patient_id) }}" class="text-decoration-none">
+                            {{ note.patient.first_name }} {{ note.patient.last_name }}
+                        </a>
+                    </li>
+                    <li class="breadcrumb-item active">{{ note.title }}</li>
+                </ol>
+            </nav>
+
+            <!-- Note Header -->
+            <div class="page-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h1 class="h3 mb-0">
+                            <i class="fas fa-file-medical text-primary me-3"></i>
+                            {{ note.title }}
+                        </h1>
+                        <p class="text-muted mb-0">
+                            Case note for {{ note.patient.first_name }} {{ note.patient.last_name }}
+                        </p>
+                    </div>
+                    <div class="col-auto">
+                        <div class="btn-group">
+                            {% if note.staff_id == current_user.staff_id %}
+                            <button class="btn btn-outline-secondary" onclick="editNote({{ note.note_id }})">
+                                <i class="fas fa-edit me-2"></i>Edit
+                            </button>
+                            {% endif %}
+                            <button class="btn btn-outline-secondary" onclick="printNote()">
+                                <i class="fas fa-print me-2"></i>Print
+                            </button>
+                            <button class="btn btn-outline-secondary dropdown-toggle dropdown-toggle-split" 
+                                    data-bs-toggle="dropdown">
+                                <span class="visually-hidden">Toggle Dropdown</span>
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="#" onclick="exportNote({{ note.note_id }})">
+                                    <i class="fas fa-download me-2"></i>Export Note
+                                </a></li>
+                                <li><a class="dropdown-item" href="#" onclick="shareNote({{ note.note_id }})">
+                                    <i class="fas fa-share me-2"></i>Share Note
+                                </a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                {% if note.is_flagged %}
+                                <li><a class="dropdown-item" href="#" onclick="analyzeAnomaly({{ note.note_id }})">
+                                    <i class="fas fa-microscope me-2"></i>Analyze Anomaly
+                                </a></li>
+                                {% endif %}
+                                <li><a class="dropdown-item" href="#" onclick="reportIssue({{ note.note_id }})">
+                                    <i class="fas fa-flag me-2"></i>Report Issue
+                                </a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Main Note Content -->
+        <div class="col-lg-8">
+            <!-- Note Metadata -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <h6 class="mb-0">
+                                <i class="fas fa-info-circle me-2"></i>Note Information
+                            </h6>
+                        </div>
+                        <div class="col-auto">
+                            {% if note.is_flagged %}
+                                <span class="badge bg-warning">
+                                    <i class="fas fa-exclamation-triangle me-1"></i>
+                                    Anomaly Detected
+                                </span>
+                            {% else %}
+                                <span class="badge bg-success">
+                                    <i class="fas fa-check-circle me-1"></i>
+                                    Normal
+                                </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <table class="table table-sm table-borderless">
+                                <tr>
+                                    <td><strong>Note Type:</strong></td>
+                                    <td><span class="badge bg-secondary">{{ note.note_type }}</span></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Created:</strong></td>
+                                    <td>{{ note.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Last Updated:</strong></td>
+                                    <td>{{ note.updated_at.strftime('%Y-%m-%d %H:%M:%S') if note.updated_at else 'Never' }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Note ID:</strong></td>
+                                    <td><code>{{ note.note_id }}</code></td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <table class="table table-sm table-borderless">
+                                <tr>
+                                    <td><strong>Staff Member:</strong></td>
+                                    <td>{{ note.staff_member.first_name }} {{ note.staff_member.last_name }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Job Title:</strong></td>
+                                    <td>{{ note.staff_member.job_title }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Department:</strong></td>
+                                    <td>{{ note.staff_member.department or 'N/A' }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Storage:</strong></td>
+                                    <td>
+                                        {% if note.s3_file_key %}
+                                            <span class="badge bg-info">
+                                                <i class="fas fa-cloud me-1"></i>AWS S3
+                                            </span>
+                                            <br><small class="text-muted">{{ note.file_size|filesizeformat if note.file_size else 'Unknown size' }}</small>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Database</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Note Content -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <h6 class="mb-0">
+                                <i class="fas fa-file-alt me-2"></i>Note Content
+                            </h6>
+                        </div>
+                        <div class="col-auto">
+                            {% if s3_content %}
+                                <span class="badge bg-success">
+                                    <i class="fas fa-cloud-download-alt me-1"></i>Retrieved from S3
+                                </span>
+                            {% else %}
+                                <span class="badge bg-info">
+                                    <i class="fas fa-database me-1"></i>Database Content
+                                </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="note-content">
+                        {% if s3_content %}
+                            {{ s3_content|replace('\n', '<br>')|safe }}
+                        {% else %}
+                            {{ note.content|replace('\n', '<br>')|safe }}
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Anomaly Analysis (if flagged) -->
+            {% if note.is_flagged %}
+            <div class="card mb-4 border-warning">
+                <div class="card-header bg-warning text-dark">
+                    <h6 class="mb-0">
+                        <i class="fas fa-exclamation-triangle me-2"></i>Anomaly Analysis
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Anomaly Score</h6>
+                            <div class="progress mb-3" style="height: 25px;">
+                                <div class="progress-bar bg-warning" style="width: {{ (note.anomaly_score * 100)|round }}%">
+                                    {{ (note.anomaly_score * 100)|round }}%
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Risk Level</h6>
+                            {% if note.anomaly_score >= 0.7 %}
+                                <span class="badge bg-danger fs-6">High Risk</span>
+                            {% elif note.anomaly_score >= 0.4 %}
+                                <span class="badge bg-warning fs-6">Medium Risk</span>
+                            {% else %}
+                                <span class="badge bg-info fs-6">Low Risk</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-warning">
+                        <h6><i class="fas fa-lightbulb me-2"></i>Potential Issues Detected:</h6>
+                        <ul class="mb-0">
+                            <li>Content significantly differs from patient's previous notes</li>
+                            <li>Unusual vocabulary or writing patterns detected</li>
+                            <li>Length deviation from typical notes</li>
+                            <li>May require manual review for accuracy</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="text-center">
+                        <button class="btn btn-warning" onclick="analyzeAnomaly({{ note.note_id }})">
+                            <i class="fas fa-microscope me-2"></i>Detailed Analysis
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- Patient Summary -->
+            <div class="card mb-4">
+                <div class="card-header bg-info text-white">
+                    <h6 class="mb-0">
+                        <i class="fas fa-user me-2"></i>Patient Summary
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="text-center mb-3">
+                        <div class="avatar-circle mx-auto mb-2">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <h5 class="mb-1">{{ note.patient.first_name }} {{ note.patient.last_name }}</h5>
+                        <small class="text-muted">{{ note.patient.medical_record_number }}</small>
+                    </div>
+                    
+                    <table class="table table-sm table-borderless">
+                        <tr>
+                            <td><strong>Age:</strong></td>
+                            <td>{{ (date.today() - note.patient.date_of_birth).days // 365 }} years</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Status:</strong></td>
+                            <td>
+                                {% if note.patient.status == 'Active' %}
+                                    <span class="badge bg-success">{{ note.patient.status }}</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ note.patient.status }}</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Admission:</strong></td>
+                            <td>
+                                {% if note.patient.admission_date %}
+                                    {{ note.patient.admission_date.strftime('%Y-%m-%d') }}
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </td>
+                        </tr>
+                    </table>
+                    
+                    <div class="d-grid">
+                        <a href="{{ url_for('client_notes', patient_id=note.patient_id) }}" class="btn btn-outline-info">
+                            <i class="fas fa-file-medical me-2"></i>View All Notes
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Related Notes -->
+            {% if related_notes %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-history me-2"></i>Previous Notes
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% for related_note in related_notes %}
+                    <div class="border-bottom pb-2 mb-2">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h6 class="mb-1">
+                                    <a href="{{ url_for('view_note', note_id=related_note.note_id) }}" 
+                                       class="text-decoration-none">
+                                        {{ related_note.title[:30] }}{% if related_note.title|length > 30 %}...{% endif %}
+                                    </a>
+                                </h6>
+                                <small class="text-muted">
+                                    {{ related_note.created_at.strftime('%Y-%m-%d') }} by 
+                                    {{ related_note.staff_member.first_name }} {{ related_note.staff_member.last_name }}
+                                </small>
+                            </div>
+                            <span class="badge bg-secondary">{{ related_note.note_type }}</span>
+                        </div>
+                        <p class="small text-muted mb-0">
+                            {{ related_note.content[:80] }}{% if related_note.content|length > 80 %}...{% endif %}
+                        </p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Actions -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-cogs me-2"></i>Quick Actions
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('add_case_note') }}?patient_id={{ note.patient_id }}" 
+                           class="btn btn-primary">
+                            <i class="fas fa-plus me-2"></i>Add New Note
+                        </a>
+                        
+                        {% if note.staff_id == current_user.staff_id %}
+                        <button class="btn btn-outline-secondary" onclick="editNote({{ note.note_id }})">
+                            <i class="fas fa-edit me-2"></i>Edit This Note
+                        </button>
+                        {% endif %}
+                        
+                        <button class="btn btn-outline-info" onclick="compareNotes({{ note.note_id }})">
+                            <i class="fas fa-balance-scale me-2"></i>Compare Notes
+                        </button>
+                        
+                        {% if note.is_flagged %}
+                        <button class="btn btn-outline-warning" onclick="analyzeAnomaly({{ note.note_id }})">
+                            <i class="fas fa-microscope me-2"></i>Analyze Anomaly
+                        </button>
+                        {% endif %}
+                        
+                        <button class="btn btn-outline-success" onclick="markResolved({{ note.note_id }})">
+                            <i class="fas fa-check me-2"></i>Mark as Reviewed
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Storage Information -->
+            {% if note.s3_file_key %}
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0">
+                        <i class="fas fa-cloud me-2"></i>Storage Details
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm table-borderless">
+                        <tr>
+                            <td><strong>Bucket:</strong></td>
+                            <td><code>{{ note.s3_bucket }}</code></td>
+                        </tr>
+                        <tr>
+                            <td><strong>File Key:</strong></td>
+                            <td><small class="text-muted">{{ note.s3_file_key[:30] }}...</small></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Size:</strong></td>
+                            <td>{{ note.file_size|filesizeformat if note.file_size else 'Unknown' }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Type:</strong></td>
+                            <td>{{ note.file_type or 'text/plain' }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function editNote(noteId) {
+        alert(`Edit note ${noteId} functionality would redirect to edit form`);
+    }
+    
+    function printNote() {
+        // Hide sidebar and other elements for printing
+        const sidebar = document.querySelector('.col-lg-4');
+        const breadcrumb = document.querySelector('nav[aria-label="breadcrumb"]');
+        const actions = document.querySelector('.btn-group');
+        
+        sidebar.style.display = 'none';
+        breadcrumb.style.display = 'none';
+        actions.style.display = 'none';
+        
+        window.print();
+        
+        // Restore elements after printing
+        setTimeout(() => {
+            sidebar.style.display = 'block';
+            breadcrumb.style.display = 'block';
+            actions.style.display = 'block';
+        }, 1000);
+    }
+    
+    function exportNote(noteId) {
+        alert(`Exporting note ${noteId} as PDF/Word document...`);
+    }
+    
+    function shareNote(noteId) {
+        alert(`Share note ${noteId} with other staff members...`);
+    }
+    
+    function analyzeAnomaly(noteId) {
+        alert(`Running detailed anomaly analysis for note ${noteId}...`);
+    }
+    
+    function reportIssue(noteId) {
+        alert(`Report issue with note ${noteId}...`);
+    }
+    
+    function compareNotes(noteId) {
+        alert(`Compare note ${noteId} with other notes for this patient...`);
+    }
+    
+    function markResolved(noteId) {
+        if (confirm('Mark this note as reviewed and resolved?')) {
+            alert(`Note ${noteId} marked as reviewed`);
+        }
+    }
+    
+    // Add styles for better note content display
+    const noteStyles = `
+        .note-content {
+            font-size: 1.1em;
+            line-height: 1.6;
+            color: #333;
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid var(--primary-color);
+        }
+        
+        .avatar-circle {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+        }
+        
+        @media print {
+            .btn, .breadcrumb, .col-lg-4 {
+                display: none !important;
+            }
+            
+            .col-lg-8 {
+                width: 100% !important;
+                max-width: 100% !important;
+            }
+            
+            .note-content {
+                background: white !important;
+                border: 1px solid #ccc !important;
+            }
+        }
+    `;
+    
+    const style = document.createElement('style');
+    style.textContent = noteStyles;
+    document.head.appendChild(style);
+</script>
+{% endblock %}
+

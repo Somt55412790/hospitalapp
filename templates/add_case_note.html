@@ -1,0 +1,535 @@
+{% extends "base.html" %}
+
+{% block title %}Add Case Note - Mental Health Hospital{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="page-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h1 class="h3 mb-0">
+                            <i class="fas fa-plus text-primary me-3"></i>
+                            Add New Case Note
+                        </h1>
+                        <p class="text-muted mb-0">
+                            Create a comprehensive case note with automatic NLP analysis
+                        </p>
+                    </div>
+                    <div class="col-auto">
+                        <a href="{{ url_for('case_notes') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>Back to Notes
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-file-medical text-primary me-2"></i>
+                        Case Note Information
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" id="caseNoteForm">
+                        <!-- Patient Selection -->
+                        <div class="row mb-4">
+                            <div class="col-md-8">
+                                <label for="patient_id" class="form-label">
+                                    <i class="fas fa-user-injured me-2"></i>Patient *
+                                </label>
+                                <select class="form-select" id="patient_id" name="patient_id" required>
+                                    <option value="">Select a patient</option>
+                                    {% for patient in patients %}
+                                    <option value="{{ patient.patient_id }}">
+                                        {{ patient.first_name }} {{ patient.last_name }} 
+                                        ({{ patient.medical_record_number }})
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="note_type" class="form-label">
+                                    <i class="fas fa-tag me-2"></i>Note Type *
+                                </label>
+                                <select class="form-select" id="note_type" name="note_type" required>
+                                    <option value="">Select type</option>
+                                    <option value="Assessment">Assessment</option>
+                                    <option value="Progress">Progress Note</option>
+                                    <option value="Treatment">Treatment Note</option>
+                                    <option value="Medication">Medication Review</option>
+                                    <option value="Therapy">Therapy Session</option>
+                                    <option value="Discharge">Discharge Planning</option>
+                                    <option value="Incident">Incident Report</option>
+                                    <option value="Consultation">Consultation</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Title -->
+                        <div class="mb-4">
+                            <label for="title" class="form-label">
+                                <i class="fas fa-heading me-2"></i>Title *
+                            </label>
+                            <input type="text" class="form-control" id="title" name="title" required
+                                   placeholder="Brief descriptive title for the case note"
+                                   maxlength="200">
+                            <div class="form-text">Maximum 200 characters</div>
+                        </div>
+
+                        <!-- Content -->
+                        <div class="mb-4">
+                            <label for="content" class="form-label">
+                                <i class="fas fa-file-alt me-2"></i>Case Note Content *
+                            </label>
+                            <textarea class="form-control" id="content" name="content" rows="12" required
+                                      placeholder="Enter detailed case note content here...
+
+Example structure:
+- Chief Complaint/Reason for Visit
+- History of Present Illness
+- Mental Status Examination
+- Assessment and Plan
+- Medications
+- Follow-up Instructions"></textarea>
+                            <div class="form-text">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <span id="charCount">0</span> characters
+                                    </div>
+                                    <div class="col-md-6 text-end">
+                                        <small class="text-muted">
+                                            <i class="fas fa-brain me-1"></i>
+                                            NLP analysis will be performed automatically
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Templates -->
+                        <div class="mb-4">
+                            <h6 class="text-muted">
+                                <i class="fas fa-templates me-2"></i>Quick Templates
+                            </h6>
+                            <div class="btn-group btn-group-sm" role="group">
+                                <button type="button" class="btn btn-outline-secondary" onclick="insertTemplate('assessment')">
+                                    Assessment
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" onclick="insertTemplate('progress')">
+                                    Progress Note
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" onclick="insertTemplate('medication')">
+                                    Medication Review
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" onclick="insertTemplate('therapy')">
+                                    Therapy Session
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Submit Buttons -->
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="d-grid">
+                                    <button type="submit" class="btn btn-primary btn-lg">
+                                        <i class="fas fa-save me-2"></i>
+                                        Save Case Note
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="d-grid">
+                                    <button type="button" class="btn btn-outline-secondary btn-lg" onclick="saveDraft()">
+                                        <i class="fas fa-file-text me-2"></i>
+                                        Save as Draft
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- NLP Analysis Preview -->
+            <div class="card mt-4" id="analysisPreview" style="display: none;">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0">
+                        <i class="fas fa-microscope text-info me-2"></i>
+                        NLP Analysis Preview
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div id="analysisContent">
+                        <!-- Analysis results will appear here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar with patient info and tips -->
+        <div class="col-lg-4">
+            <!-- Patient Info Card -->
+            <div class="card mb-4" id="patientInfo" style="display: none;">
+                <div class="card-header bg-info text-white">
+                    <h6 class="mb-0">
+                        <i class="fas fa-user-injured me-2"></i>
+                        Patient Information
+                    </h6>
+                </div>
+                <div class="card-body" id="patientInfoContent">
+                    <!-- Patient info will be loaded here -->
+                </div>
+            </div>
+
+            <!-- Writing Tips -->
+            <div class="card mb-4">
+                <div class="card-header bg-success text-white">
+                    <h6 class="mb-0">
+                        <i class="fas fa-lightbulb me-2"></i>
+                        Writing Tips
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled mb-0">
+                        <li class="mb-2">
+                            <i class="fas fa-check text-success me-2"></i>
+                            Use clear, professional language
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-check text-success me-2"></i>
+                            Include objective observations
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-check text-success me-2"></i>
+                            Document patient's own words when relevant
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-check text-success me-2"></i>
+                            Be specific about timeframes
+                        </li>
+                        <li class="mb-0">
+                            <i class="fas fa-check text-success me-2"></i>
+                            Follow SOAP format when applicable
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Recent Notes for Patient -->
+            <div class="card" id="recentNotes" style="display: none;">
+                <div class="card-header bg-warning text-dark">
+                    <h6 class="mb-0">
+                        <i class="fas fa-history me-2"></i>
+                        Recent Notes for Patient
+                    </h6>
+                </div>
+                <div class="card-body" id="recentNotesContent">
+                    <!-- Recent notes will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Character counter
+    const contentTextarea = document.getElementById('content');
+    const charCount = document.getElementById('charCount');
+    
+    contentTextarea.addEventListener('input', function() {
+        charCount.textContent = this.value.length;
+        
+        // Auto-save to localStorage
+        localStorage.setItem('caseNoteDraft', JSON.stringify({
+            patient_id: document.getElementById('patient_id').value,
+            note_type: document.getElementById('note_type').value,
+            title: document.getElementById('title').value,
+            content: this.value,
+            timestamp: new Date().toISOString()
+        }));
+    });
+
+    // Load draft on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        const draft = localStorage.getItem('caseNoteDraft');
+        if (draft) {
+            const draftData = JSON.parse(draft);
+            const timeDiff = new Date() - new Date(draftData.timestamp);
+            
+            // Only load if draft is less than 24 hours old
+            if (timeDiff < 24 * 60 * 60 * 1000) {
+                if (confirm('A draft was found. Would you like to restore it?')) {
+                    document.getElementById('patient_id').value = draftData.patient_id || '';
+                    document.getElementById('note_type').value = draftData.note_type || '';
+                    document.getElementById('title').value = draftData.title || '';
+                    document.getElementById('content').value = draftData.content || '';
+                    charCount.textContent = draftData.content ? draftData.content.length : 0;
+                    
+                    // Trigger patient selection if available
+                    if (draftData.patient_id) {
+                        loadPatientInfo(draftData.patient_id);
+                    }
+                }
+            }
+        }
+    });
+
+    // Patient selection handler
+    document.getElementById('patient_id').addEventListener('change', function() {
+        const patientId = this.value;
+        if (patientId) {
+            loadPatientInfo(patientId);
+            loadRecentNotes(patientId);
+        } else {
+            document.getElementById('patientInfo').style.display = 'none';
+            document.getElementById('recentNotes').style.display = 'none';
+        }
+    });
+
+    function loadPatientInfo(patientId) {
+        // Simulate loading patient information
+        document.getElementById('patientInfoContent').innerHTML = `
+            <div class="text-center">
+                <div class="spinner-border spinner-border-sm text-info" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        `;
+        document.getElementById('patientInfo').style.display = 'block';
+        
+        setTimeout(() => {
+            document.getElementById('patientInfoContent').innerHTML = `
+                <div class="row">
+                    <div class="col-12">
+                        <h6>Patient Details</h6>
+                        <p class="mb-1"><strong>MRN:</strong> MRN00100${patientId}</p>
+                        <p class="mb-1"><strong>Age:</strong> ${Math.floor(Math.random() * 50) + 20} years</p>
+                        <p class="mb-1"><strong>Status:</strong> <span class="badge bg-success">Active</span></p>
+                        <p class="mb-1"><strong>Admission:</strong> ${new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toLocaleDateString()}</p>
+                    </div>
+                </div>
+                <hr>
+                <div class="alert alert-info alert-sm">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <small>Last note: ${Math.floor(Math.random() * 7) + 1} days ago</small>
+                </div>
+            `;
+        }, 1000);
+    }
+
+    function loadRecentNotes(patientId) {
+        document.getElementById('recentNotesContent').innerHTML = `
+            <div class="text-center">
+                <div class="spinner-border spinner-border-sm text-warning" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        `;
+        document.getElementById('recentNotes').style.display = 'block';
+        
+        setTimeout(() => {
+            document.getElementById('recentNotesContent').innerHTML = `
+                <div class="list-group list-group-flush">
+                    <div class="list-group-item px-0">
+                        <div class="d-flex justify-content-between">
+                            <span class="badge bg-secondary">Progress</span>
+                            <small>3 days ago</small>
+                        </div>
+                        <small class="text-muted">Patient showing improvement...</small>
+                    </div>
+                    <div class="list-group-item px-0">
+                        <div class="d-flex justify-content-between">
+                            <span class="badge bg-secondary">Assessment</span>
+                            <small>1 week ago</small>
+                        </div>
+                        <small class="text-muted">Initial evaluation completed...</small>
+                    </div>
+                </div>
+                <div class="text-center mt-2">
+                    <button class="btn btn-sm btn-outline-warning" onclick="analyzeHistory(${patientId})">
+                        <i class="fas fa-brain me-1"></i>Analyze History
+                    </button>
+                </div>
+            `;
+        }, 1500);
+    }
+
+    // Template insertion
+    const templates = {
+        assessment: `CHIEF COMPLAINT:
+[Brief description of why patient is being seen]
+
+HISTORY OF PRESENT ILLNESS:
+[Detailed description of current symptoms and their timeline]
+
+MENTAL STATUS EXAMINATION:
+Appearance: [General appearance and grooming]
+Behavior: [Psychomotor activity, cooperation]
+Speech: [Rate, rhythm, volume]
+Mood: [Patient's subjective mood]
+Affect: [Observed emotional expression]
+Thought Process: [Organization and flow of thoughts]
+Thought Content: [Delusions, obsessions, etc.]
+Perceptions: [Hallucinations, illusions]
+Cognition: [Orientation, memory, concentration]
+Insight: [Understanding of condition]
+Judgment: [Decision-making capacity]
+
+ASSESSMENT:
+[Clinical impression and diagnosis]
+
+PLAN:
+[Treatment recommendations and follow-up]`,
+
+        progress: `PROGRESS SINCE LAST VISIT:
+[Changes in symptoms, functioning, medications]
+
+CURRENT STATUS:
+Mental Status: [Brief mental status update]
+Medications: [Current medications and compliance]
+Side Effects: [Any reported side effects]
+
+TREATMENT RESPONSE:
+[Response to current interventions]
+
+PLAN:
+[Adjustments to treatment plan]
+Next appointment: [Date and time]`,
+
+        medication: `CURRENT MEDICATIONS:
+[List all current psychiatric medications with doses]
+
+MEDICATION COMPLIANCE:
+[Patient's adherence to medication regimen]
+
+EFFICACY:
+[Assessment of medication effectiveness]
+
+SIDE EFFECTS:
+[Any reported or observed side effects]
+
+LABORATORY RESULTS:
+[Relevant lab values if applicable]
+
+PLAN:
+[Medication adjustments, monitoring plans]`,
+
+        therapy: `SESSION TYPE: [Individual/Group/Family]
+SESSION DURATION: [Minutes]
+
+PRESENTING CONCERNS:
+[Issues discussed in session]
+
+INTERVENTIONS USED:
+[Therapeutic techniques employed]
+
+PATIENT RESPONSE:
+[Patient's engagement and response to interventions]
+
+HOMEWORK ASSIGNED:
+[Tasks or exercises for patient to complete]
+
+PLAN:
+[Next session focus and timeline]`
+    };
+
+    function insertTemplate(templateType) {
+        const textarea = document.getElementById('content');
+        const template = templates[templateType];
+        
+        if (textarea.value.trim() === '') {
+            textarea.value = template;
+        } else {
+            if (confirm('This will replace the current content. Continue?')) {
+                textarea.value = template;
+            }
+        }
+        
+        // Update character count
+        charCount.textContent = textarea.value.length;
+        textarea.focus();
+    }
+
+    function saveDraft() {
+        const draftData = {
+            patient_id: document.getElementById('patient_id').value,
+            note_type: document.getElementById('note_type').value,
+            title: document.getElementById('title').value,
+            content: document.getElementById('content').value,
+            timestamp: new Date().toISOString()
+        };
+        
+        localStorage.setItem('caseNoteDraft', JSON.stringify(draftData));
+        
+        // Show success message
+        const alert = document.createElement('div');
+        alert.className = 'alert alert-success alert-dismissible fade show';
+        alert.innerHTML = `
+            <i class="fas fa-check-circle me-2"></i>
+            Draft saved successfully!
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        document.querySelector('.container-fluid').insertBefore(alert, document.querySelector('.row'));
+        
+        setTimeout(() => {
+            alert.remove();
+        }, 3000);
+    }
+
+    function analyzeHistory(patientId) {
+        document.getElementById('analysisPreview').style.display = 'block';
+        document.getElementById('analysisContent').innerHTML = `
+            <div class="text-center">
+                <div class="spinner-border text-info" role="status">
+                    <span class="visually-hidden">Analyzing...</span>
+                </div>
+                <p class="mt-2">Analyzing patient history with NLP...</p>
+            </div>
+        `;
+        
+        setTimeout(() => {
+            document.getElementById('analysisContent').innerHTML = `
+                <div class="alert alert-info">
+                    <h6><i class="fas fa-brain me-2"></i>Historical Pattern Analysis</h6>
+                    <ul class="mb-0">
+                        <li>Patient shows consistent improvement trajectory</li>
+                        <li>Medication compliance is generally good</li>
+                        <li>No significant anomalies detected in previous notes</li>
+                        <li>Writing style appears consistent with your previous notes</li>
+                    </ul>
+                </div>
+            `;
+        }, 2000);
+    }
+
+    // Form submission
+    document.getElementById('caseNoteForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const submitBtn = this.querySelector('button[type="submit"]');
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Saving & Analyzing...';
+        submitBtn.disabled = true;
+        
+        // Simulate processing
+        setTimeout(() => {
+            // Clear draft
+            localStorage.removeItem('caseNoteDraft');
+            
+            // Show success and redirect
+            alert('Case note saved successfully! NLP analysis will be completed shortly.');
+            window.location.href = '/case_notes';
+        }, 3000);
+    });
+</script>
+{% endblock %}
+

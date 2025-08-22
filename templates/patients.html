@@ -1,0 +1,504 @@
+{% extends "base.html" %}
+
+{% block title %}Patients - Mental Health Hospital{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="page-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h1 class="h3 mb-0">
+                            <i class="fas fa-users text-primary me-3"></i>
+                            Patient Directory
+                        </h1>
+                        <p class="text-muted mb-0">
+                            View and manage patient information and case histories
+                        </p>
+                    </div>
+                    <div class="col-auto">
+                        <button class="btn btn-primary" onclick="addPatient()">
+                            <i class="fas fa-user-plus me-2"></i>Add Patient
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters and Search -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <form method="GET" class="row g-3">
+                        <div class="col-md-4">
+                            <label for="search" class="form-label">Search Patients</label>
+                            <input type="text" class="form-control" id="search" name="search" 
+                                   placeholder="Name, MRN, or ID..." value="{{ request.args.get('search', '') }}">
+                        </div>
+                        <div class="col-md-2">
+                            <label for="status" class="form-label">Status</label>
+                            <select class="form-select" id="status" name="status">
+                                <option value="">All Status</option>
+                                <option value="Active" {{ 'selected' if request.args.get('status') == 'Active' }}>Active</option>
+                                <option value="Discharged" {{ 'selected' if request.args.get('status') == 'Discharged' }}>Discharged</option>
+                                <option value="On Leave" {{ 'selected' if request.args.get('status') == 'On Leave' }}>On Leave</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="sort_by" class="form-label">Sort By</label>
+                            <select class="form-select" id="sort_by" name="sort_by">
+                                <option value="name" {{ 'selected' if request.args.get('sort_by') == 'name' }}>Name</option>
+                                <option value="mrn" {{ 'selected' if request.args.get('sort_by') == 'mrn' }}>MRN</option>
+                                <option value="admission" {{ 'selected' if request.args.get('sort_by') == 'admission' }}>Admission Date</option>
+                                <option value="age" {{ 'selected' if request.args.get('sort_by') == 'age' }}>Age</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="age_range" class="form-label">Age Range</label>
+                            <select class="form-select" id="age_range" name="age_range">
+                                <option value="">All Ages</option>
+                                <option value="18-25" {{ 'selected' if request.args.get('age_range') == '18-25' }}>18-25</option>
+                                <option value="26-35" {{ 'selected' if request.args.get('age_range') == '26-35' }}>26-35</option>
+                                <option value="36-50" {{ 'selected' if request.args.get('age_range') == '36-50' }}>36-50</option>
+                                <option value="51-65" {{ 'selected' if request.args.get('age_range') == '51-65' }}>51-65</option>
+                                <option value="65+" {{ 'selected' if request.args.get('age_range') == '65+' }}>65+</option>
+                            </select>
+                        </div>
+                        <div class="col-md-1 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Patient Statistics -->
+    <div class="row mb-4">
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card stats-card success h-100">
+                <div class="card-body text-center text-white">
+                    <i class="fas fa-users fa-2x mb-2"></i>
+                    <h4>{{ patients.total if patients.total else 'N/A' }}</h4>
+                    <p class="mb-0">Total Patients</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card stats-card h-100">
+                <div class="card-body text-center text-white">
+                    <i class="fas fa-user-check fa-2x mb-2"></i>
+                    <h4>{{ active_count or 'N/A' }}</h4>
+                    <p class="mb-0">Active Patients</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card stats-card warning h-100">
+                <div class="card-body text-center text-white">
+                    <i class="fas fa-calendar-day fa-2x mb-2"></i>
+                    <h4>{{ new_admissions or 'N/A' }}</h4>
+                    <p class="mb-0">New This Month</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card stats-card danger h-100">
+                <div class="card-body text-center text-white">
+                    <i class="fas fa-sign-out-alt fa-2x mb-2"></i>
+                    <h4>{{ discharges or 'N/A' }}</h4>
+                    <p class="mb-0">Discharged</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Patients Table -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-white">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <h5 class="mb-0">
+                                Patient List
+                                {% if patients.total %}
+                                    <span class="badge bg-primary ms-2">{{ patients.total }}</span>
+                                {% endif %}
+                            </h5>
+                        </div>
+                        <div class="col-auto">
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-secondary" onclick="exportPatients()">
+                                    <i class="fas fa-download me-1"></i>Export
+                                </button>
+                                <button class="btn btn-outline-secondary" onclick="printList()">
+                                    <i class="fas fa-print me-1"></i>Print
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    {% if patients.items %}
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Patient</th>
+                                        <th>MRN</th>
+                                        <th>Age</th>
+                                        <th>Status</th>
+                                        <th>Admission Date</th>
+                                        <th>Case Notes</th>
+                                        <th>Last Activity</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for patient in patients.items %}
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="avatar-circle me-3">
+                                                    <i class="fas fa-user"></i>
+                                                </div>
+                                                <div>
+                                                    <strong>{{ patient.first_name }} {{ patient.last_name }}</strong>
+                                                    <br>
+                                                    <small class="text-muted">
+                                                        DOB: {{ patient.date_of_birth.strftime('%Y-%m-%d') }}
+                                                    </small>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <code>{{ patient.medical_record_number }}</code>
+                                        </td>
+                                        <td>
+                                            {{ (date.today() - patient.date_of_birth).days // 365 }} years
+                                        </td>
+                                        <td>
+                                            {% if patient.status == 'Active' %}
+                                                <span class="badge bg-success">{{ patient.status }}</span>
+                                            {% elif patient.status == 'Discharged' %}
+                                                <span class="badge bg-secondary">{{ patient.status }}</span>
+                                            {% else %}
+                                                <span class="badge bg-warning">{{ patient.status }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if patient.admission_date %}
+                                                <small>{{ patient.admission_date.strftime('%Y-%m-%d') }}</small>
+                                                {% if patient.discharge_date %}
+                                                    <br><small class="text-muted">
+                                                        Discharged: {{ patient.discharge_date.strftime('%Y-%m-%d') }}
+                                                    </small>
+                                                {% endif %}
+                                            {% else %}
+                                                <span class="text-muted">N/A</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <span class="badge bg-info me-2">{{ patient.case_notes|length }}</span>
+                                                {% if patient.case_notes %}
+                                                    {% set flagged_notes = patient.case_notes|selectattr('is_flagged', 'equalto', true)|list %}
+                                                    {% if flagged_notes %}
+                                                        <span class="badge anomaly-badge">{{ flagged_notes|length }}</span>
+                                                    {% endif %}
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                        <td>
+                                            {% if patient.case_notes %}
+                                                {% set latest_note = patient.case_notes|sort(attribute='created_at', reverse=true)|first %}
+                                                <small>{{ latest_note.created_at.strftime('%Y-%m-%d') }}</small>
+                                                <br><small class="text-muted">by {{ latest_note.staff_member.first_name }} {{ latest_note.staff_member.last_name }}</small>
+                                            {% else %}
+                                                <span class="text-muted">No notes</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                <button class="btn btn-outline-primary" 
+                                                        onclick="viewPatient({{ patient.patient_id }})"
+                                                        title="View Details">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                                <button class="btn btn-outline-success" 
+                                                        onclick="addNote({{ patient.patient_id }})"
+                                                        title="Add Case Note">
+                                                    <i class="fas fa-plus"></i>
+                                                </button>
+                                                <button class="btn btn-outline-info" 
+                                                        onclick="viewNotes({{ patient.patient_id }})"
+                                                        title="View Notes">
+                                                    <i class="fas fa-file-medical"></i>
+                                                </button>
+                                                <button class="btn btn-outline-secondary" 
+                                                        onclick="editPatient({{ patient.patient_id }})"
+                                                        title="Edit">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Pagination -->
+                        {% if patients.pages > 1 %}
+                        <div class="card-footer bg-white">
+                            <nav aria-label="Page navigation">
+                                <ul class="pagination justify-content-center mb-0">
+                                    {% if patients.has_prev %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="{{ url_for('patients', page=patients.prev_num) }}">
+                                                Previous
+                                            </a>
+                                        </li>
+                                    {% endif %}
+                                    
+                                    {% for page_num in patients.iter_pages() %}
+                                        {% if page_num %}
+                                            {% if page_num != patients.page %}
+                                                <li class="page-item">
+                                                    <a class="page-link" href="{{ url_for('patients', page=page_num) }}">
+                                                        {{ page_num }}
+                                                    </a>
+                                                </li>
+                                            {% else %}
+                                                <li class="page-item active">
+                                                    <span class="page-link">{{ page_num }}</span>
+                                                </li>
+                                            {% endif %}
+                                        {% else %}
+                                            <li class="page-item disabled">
+                                                <span class="page-link">...</span>
+                                            </li>
+                                        {% endif %}
+                                    {% endfor %}
+                                    
+                                    {% if patients.has_next %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="{{ url_for('patients', page=patients.next_num) }}">
+                                                Next
+                                            </a>
+                                        </li>
+                                    {% endif %}
+                                </ul>
+                            </nav>
+                        </div>
+                        {% endif %}
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-users fa-4x text-muted mb-4"></i>
+                            <h4 class="text-muted">No patients found</h4>
+                            <p class="text-muted">
+                                {% if request.args.get('search') or request.args.get('status') %}
+                                    Try adjusting your search criteria or 
+                                    <a href="{{ url_for('patients') }}" class="text-primary">clear filters</a>
+                                {% else %}
+                                    No patients have been registered yet
+                                {% endif %}
+                            </p>
+                            <button class="btn btn-primary" onclick="addPatient()">
+                                <i class="fas fa-user-plus me-2"></i>Add First Patient
+                            </button>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Patient Detail Modal -->
+<div class="modal fade" id="patientModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Patient Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="patientModalBody">
+                <!-- Content will be loaded here -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="editCurrentPatient()">
+                    <i class="fas fa-edit me-2"></i>Edit Patient
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let currentPatientId = null;
+
+    function viewPatient(patientId) {
+        currentPatientId = patientId;
+        const modal = new bootstrap.Modal(document.getElementById('patientModal'));
+        
+        document.getElementById('patientModalBody').innerHTML = `
+            <div class="text-center">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2">Loading patient details...</p>
+            </div>
+        `;
+        modal.show();
+        
+        // Simulate loading patient details
+        setTimeout(() => {
+            document.getElementById('patientModalBody').innerHTML = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6><i class="fas fa-user me-2"></i>Personal Information</h6>
+                            </div>
+                            <div class="card-body">
+                                <table class="table table-sm">
+                                    <tr><td><strong>Full Name:</strong></td><td>Patient Name ${patientId}</td></tr>
+                                    <tr><td><strong>MRN:</strong></td><td>MRN00100${patientId}</td></tr>
+                                    <tr><td><strong>Date of Birth:</strong></td><td>1990-01-01</td></tr>
+                                    <tr><td><strong>Age:</strong></td><td>34 years</td></tr>
+                                    <tr><td><strong>Status:</strong></td><td><span class="badge bg-success">Active</span></td></tr>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6><i class="fas fa-hospital me-2"></i>Admission Information</h6>
+                            </div>
+                            <div class="card-body">
+                                <table class="table table-sm">
+                                    <tr><td><strong>Admission Date:</strong></td><td>2024-01-15</td></tr>
+                                    <tr><td><strong>Length of Stay:</strong></td><td>45 days</td></tr>
+                                    <tr><td><strong>Primary Diagnosis:</strong></td><td>Major Depressive Disorder</td></tr>
+                                    <tr><td><strong>Attending Physician:</strong></td><td>Dr. Smith</td></tr>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6><i class="fas fa-chart-line me-2"></i>Case Notes Summary</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-3 text-center">
+                                        <h4 class="text-primary">${Math.floor(Math.random() * 20) + 5}</h4>
+                                        <small class="text-muted">Total Notes</small>
+                                    </div>
+                                    <div class="col-md-3 text-center">
+                                        <h4 class="text-success">${Math.floor(Math.random() * 5) + 1}</h4>
+                                        <small class="text-muted">This Week</small>
+                                    </div>
+                                    <div class="col-md-3 text-center">
+                                        <h4 class="text-warning">${Math.floor(Math.random() * 3)}</h4>
+                                        <small class="text-muted">Flagged</small>
+                                    </div>
+                                    <div class="col-md-3 text-center">
+                                        <h4 class="text-info">3</h4>
+                                        <small class="text-muted">Staff Contributors</small>
+                                    </div>
+                                </div>
+                                <hr>
+                                <div class="d-flex justify-content-center gap-2">
+                                    <button class="btn btn-sm btn-primary" onclick="addNote(${patientId})">
+                                        <i class="fas fa-plus me-1"></i>Add Note
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-primary" onclick="viewNotes(${patientId})">
+                                        <i class="fas fa-file-medical me-1"></i>View All Notes
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-info" onclick="analyzePatient(${patientId})">
+                                        <i class="fas fa-brain me-1"></i>NLP Analysis
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }, 1000);
+    }
+
+    function addNote(patientId) {
+        window.location.href = `/add_case_note?patient_id=${patientId}`;
+    }
+
+    function viewNotes(patientId) {
+        window.location.href = `/case_notes?patient_id=${patientId}`;
+    }
+
+    function editPatient(patientId) {
+        alert('Patient editing functionality would be implemented here');
+    }
+
+    function editCurrentPatient() {
+        if (currentPatientId) {
+            editPatient(currentPatientId);
+        }
+    }
+
+    function addPatient() {
+        alert('Add patient functionality would be implemented here');
+    }
+
+    function analyzePatient(patientId) {
+        alert(`Running comprehensive NLP analysis for patient ${patientId}...`);
+    }
+
+    function exportPatients() {
+        alert('Export functionality would generate CSV/PDF of patient list');
+    }
+
+    function printList() {
+        window.print();
+    }
+
+    // Auto-submit form on filter change
+    document.querySelectorAll('#status, #sort_by, #age_range').forEach(select => {
+        select.addEventListener('change', function() {
+            this.form.submit();
+        });
+    });
+
+    // Add avatar styling
+    const style = document.createElement('style');
+    style.textContent = `
+        .avatar-circle {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 16px;
+        }
+    `;
+    document.head.appendChild(style);
+</script>
+{% endblock %}
+
